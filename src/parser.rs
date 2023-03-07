@@ -145,26 +145,31 @@ impl ArgParser {
         use ArgParserError::*;
         use ParsedArg::*;
 
-        let mut args = VecDeque::from_iter(args);
+        let mut args = VecDeque::from_iter(args.iter().map(|s| s.to_string()));
         let mut parse_options = true;
         let mut parsed_options = HashMap::new();
         let mut parsed_args = vec![];
 
         while let Some(arg) = args.pop_front() {
-            if *arg == "--" && parse_options {
+            if arg == "--" && parse_options {
                 parse_options = false;
                 continue;
             }
 
             if parse_options {
-                if let Some((name_or_alias, value)) = self.parse_option(arg)? {
+                if let Some((name_or_alias, value)) = self.parse_option(&arg)? {
                     let (name, option) = self.resolve(name_or_alias)?;
 
                     let value = if OptionalArg::is_valid_alias(name_or_alias) {
                         if let Some(value) = value.strip_prefix('=') {
                             value
-                        } else {
+                        } else if !value.is_empty() && matches!(option.kind, OptionalArgKind::Flag)
+                        {
+                            args.push_front(format!("-{}", value));
+
                             ""
+                        } else {
+                            value
                         }
                     } else {
                         value
@@ -188,13 +193,10 @@ impl ArgParser {
                             let value = if value.is_empty() {
                                 args.pop_front().ok_or(MissingOptionValue { name })?
                             } else {
-                                value
+                                value.to_string()
                             };
 
-                            parsed_args.push(RequiredValue {
-                                name,
-                                value: value.to_string(),
-                            });
+                            parsed_args.push(RequiredValue { name, value });
                         }
                         OptionalArgKind::OptionalValue => {
                             let value = if value.is_empty() {

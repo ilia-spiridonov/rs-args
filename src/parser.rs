@@ -403,6 +403,33 @@ fn test_parse() -> Result<(), ArgParserError> {
         ]),
         parser.parse(&["--qux", "foo", "--qux=bar"])
     );
+    assert_eq!(
+        Err(UnknownAlias {
+            alias: "t".to_string()
+        }),
+        parser.parse(&["-btrue"])
+    );
+    assert_eq!(
+        Ok(vec![
+            Flag {
+                name: "bar",
+                value: true
+            },
+            RequiredValue {
+                name: "baz",
+                value: "q=123".to_string()
+            },
+            Flag {
+                name: "bar",
+                value: true
+            },
+            OptionalValue {
+                name: "qux",
+                value: Some("123".to_string())
+            }
+        ]),
+        parser.parse(&["-bBq=123", "-bq=123"])
+    );
 
     Ok(())
 }

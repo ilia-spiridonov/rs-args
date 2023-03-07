@@ -124,14 +124,21 @@ impl ArgParser {
         use ParsedArg::*;
 
         let mut parsed_args = vec![];
+        let mut parse_options = true;
 
         for arg in args {
-            if let Some((name_or_alias, value)) = self.parse_option(arg)? {
-                let (name, option) = self.resolve(name_or_alias)?;
-
-                parsed_args.push(Flag { name, value: true });
-
+            if *arg == "--" && parse_options {
+                parse_options = false;
                 continue;
+            }
+
+            if parse_options {
+                if let Some((name_or_alias, value)) = self.parse_option(arg)? {
+                    let (name, option) = self.resolve(name_or_alias)?;
+
+                    parsed_args.push(Flag { name, value: true });
+                    continue;
+                }
             }
 
             parsed_args.push(Positional {
@@ -202,11 +209,19 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--Foo"])
     );
     assert_eq!(
-        Ok(vec![Flag {
-            name: "foo",
-            value: true
-        }]),
-        parser.parse(&["--foo"])
+        Ok(vec![
+            Flag {
+                name: "foo",
+                value: true
+            },
+            Positional {
+                value: "--".to_string()
+            },
+            Positional {
+                value: "--foo".to_string()
+            }
+        ]),
+        parser.parse(&["--foo", "--", "--", "--foo"])
     );
 
     Ok(())

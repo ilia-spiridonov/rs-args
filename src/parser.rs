@@ -21,7 +21,10 @@ pub enum ParsedArg {
 
 #[derive(Debug, PartialEq)]
 pub enum ArgParserError {
-    InvalidOptionName { name: &'static str },
+    InvalidOption { name: &'static str },
+    DuplicateOption { name: &'static str },
+    InvalidAlias { alias: &'static str },
+    DuplicateAlias { alias: &'static str },
     UnknownOption { name: String },
 }
 
@@ -48,9 +51,28 @@ impl ArgParser {
         &mut self,
         name: &'static str,
         option: OptionalArg,
+        alias: Option<&'static str>,
     ) -> Result<(), ArgParserError> {
+        use ArgParserError::*;
+
         if !OptionalArg::is_valid(name) {
-            return Err(ArgParserError::InvalidOptionName { name });
+            return Err(InvalidOption { name });
+        }
+
+        if self.options.contains_key(name) {
+            return Err(DuplicateOption { name });
+        }
+
+        if let Some(alias) = alias {
+            if !OptionalArg::is_valid_alias(alias) {
+                return Err(InvalidAlias { alias });
+            }
+
+            if self.aliases.contains_key(alias) {
+                return Err(DuplicateAlias { alias });
+            }
+
+            self.aliases.insert(alias, name);
         }
 
         self.options.insert(name, option);
@@ -61,13 +83,27 @@ impl ArgParser {
 
 #[test]
 fn test_add_option() {
+    use ArgParserError::*;
+
     let mut parser = ArgParser::default();
     let get_opt_arg = || OptionalArg::new(OptionalArgKind::Flag, false);
 
-    assert_eq!(Ok(()), parser.add_option("foo-bar", get_opt_arg()));
     assert_eq!(
-        Err(ArgParserError::InvalidOptionName { name: "--baz" }),
-        parser.add_option("--baz", get_opt_arg())
+        Err(InvalidOption { name: "--foo" }),
+        parser.add_option("--foo", get_opt_arg(), None)
+    );
+    assert_eq!(
+        Err(InvalidAlias { alias: "?" }),
+        parser.add_option("foo", get_opt_arg(), Some("?"))
+    );
+    assert_eq!(Ok(()), parser.add_option("foo", get_opt_arg(), Some("f")));
+    assert_eq!(
+        Err(DuplicateOption { name: "foo" }),
+        parser.add_option("foo", get_opt_arg(), None)
+    );
+    assert_eq!(
+        Err(DuplicateAlias { alias: "f" }),
+        parser.add_option("bar", get_opt_arg(), Some("f"))
     );
 }
 

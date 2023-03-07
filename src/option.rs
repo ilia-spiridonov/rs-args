@@ -33,3 +33,16 @@ fn test_is_valid() {
     assert!(!OptionalArg::is_valid("a--a"));
     assert!(OptionalArg::is_valid("a-A-0"));
 }
+
+impl OptionalArg {
+    pub(crate) fn is_valid_alias(alias: &'static str) -> bool {
+        Self::is_valid(alias) && alias.len() == 1
+    }
+}
+
+#[test]
+fn test_is_valid_alias() {
+    assert!(OptionalArg::is_valid_alias("a"));
+    assert!(!OptionalArg::is_valid_alias("-"));
+    assert!(!OptionalArg::is_valid_alias("aA"));
+}

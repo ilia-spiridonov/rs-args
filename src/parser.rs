@@ -1,4 +1,4 @@
-use super::OptionalArg;
+use super::{OptionalArg, OptionalArgKind};
 use std::{collections::HashMap, env};
 
 pub enum ArgParserMode {
@@ -19,8 +19,9 @@ pub enum ParsedArg {
     OptionalValue { name: String, value: Option<String> },
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ArgParserError {
-    InvalidOptionName { name: String },
+    InvalidOptionName { name: &'static str },
     UnknownOption { name: String },
 }
 
@@ -43,9 +44,31 @@ impl Default for ArgParser {
 }
 
 impl ArgParser {
-    pub fn add_option(&mut self, name: &'static str, option: OptionalArg) -> &mut Self {
-        self
+    pub fn add_option(
+        &mut self,
+        name: &'static str,
+        option: OptionalArg,
+    ) -> Result<(), ArgParserError> {
+        if !OptionalArg::is_valid(name) {
+            return Err(ArgParserError::InvalidOptionName { name });
+        }
+
+        self.options.insert(name, option);
+
+        Ok(())
     }
+}
+
+#[test]
+fn test_add_option() {
+    let mut parser = ArgParser::default();
+    let get_opt_arg = || OptionalArg::new(OptionalArgKind::Flag, false);
+
+    assert_eq!(Ok(()), parser.add_option("foo-bar", get_opt_arg()));
+    assert_eq!(
+        Err(ArgParserError::InvalidOptionName { name: "--baz" }),
+        parser.add_option("--baz", get_opt_arg())
+    );
 }
 
 impl ArgParser {

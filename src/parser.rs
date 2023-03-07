@@ -43,6 +43,12 @@ impl Default for ArgParser {
 }
 
 impl ArgParser {
+    pub fn add_option(&mut self, name: &'static str, option: OptionalArg) -> &mut Self {
+        self
+    }
+}
+
+impl ArgParser {
     pub fn parse_args() -> ArgParseResult {
         let args = env::args().skip(1).collect::<Vec<_>>();
         let str_args = args.iter().map(|s| &s[..]).collect::<Vec<_>>();

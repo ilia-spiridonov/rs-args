@@ -160,32 +160,42 @@ impl ArgParser {
                 if let Some((name_or_alias, value)) = self.parse_option(arg)? {
                     let (name, option) = self.resolve(name_or_alias)?;
 
-                    if matches!(option.kind, OptionalArgKind::Flag) {
-                        if !matches!(value, "" | "true" | "false") {
-                            return Err(InvalidOptionValue {
+                    match option.kind {
+                        OptionalArgKind::Flag => {
+                            if !matches!(value, "" | "true" | "false") {
+                                return Err(InvalidOptionValue {
+                                    name,
+                                    value: value.to_string(),
+                                });
+                            }
+
+                            parsed_args.push(Flag {
+                                name,
+                                value: matches!(value, "" | "true"),
+                            });
+                        }
+                        OptionalArgKind::RequiredValue => {
+                            let value = if value.is_empty() {
+                                args.pop_front().ok_or(MissingOptionValue { name })?
+                            } else {
+                                value
+                            };
+
+                            parsed_args.push(RequiredValue {
                                 name,
                                 value: value.to_string(),
                             });
                         }
+                        OptionalArgKind::OptionalValue => {
+                            let value = if value.is_empty() {
+                                None
+                            } else {
+                                Some(value.to_string())
+                            };
 
-                        parsed_args.push(Flag {
-                            name,
-                            value: matches!(value, "" | "true"),
-                        });
-                    }
-
-                    if matches!(option.kind, OptionalArgKind::RequiredValue) {
-                        let value = if value.is_empty() {
-                            args.pop_front().ok_or(MissingOptionValue { name })?
-                        } else {
-                            value
-                        };
-
-                        parsed_args.push(RequiredValue {
-                            name,
-                            value: value.to_string(),
-                        });
-                    }
+                            parsed_args.push(OptionalValue { name, value });
+                        }
+                    };
 
                     if !option.multiple {
                         if parsed_options.contains_key(name) {
@@ -279,6 +289,11 @@ fn test_parse() -> Result<(), ArgParserError> {
         OptionalArg::new(OptionalArgKind::RequiredValue, true),
         Some("B"),
     )?;
+    parser.add_option(
+        "qux",
+        OptionalArg::new(OptionalArgKind::OptionalValue, true),
+        Some("q"),
+    )?;
 
     assert_eq!(
         Ok(vec![
@@ -371,6 +386,22 @@ fn test_parse() -> Result<(), ArgParserError> {
             }
         ]),
         parser.parse(&["--baz=123", "-B", "-C"])
+    );
+    assert_eq!(
+        Ok(vec![
+            OptionalValue {
+                name: "qux",
+                value: None
+            },
+            Positional {
+                value: "foo".to_string()
+            },
+            OptionalValue {
+                name: "qux",
+                value: Some("bar".to_string())
+            }
+        ]),
+        parser.parse(&["--qux", "foo", "--qux=bar"])
     );
 
     Ok(())

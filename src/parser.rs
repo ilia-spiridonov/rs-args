@@ -160,6 +160,16 @@ impl ArgParser {
                 if let Some((name_or_alias, value)) = self.parse_option(arg)? {
                     let (name, option) = self.resolve(name_or_alias)?;
 
+                    let value = if OptionalArg::is_valid_alias(name_or_alias) {
+                        if let Some(value) = value.strip_prefix('=') {
+                            value
+                        } else {
+                            ""
+                        }
+                    } else {
+                        value
+                    };
+
                     match option.kind {
                         OptionalArgKind::Flag => {
                             if !matches!(value, "" | "true" | "false") {
@@ -237,7 +247,11 @@ impl ArgParser {
         }
 
         if let Some(alias) = arg.strip_prefix('-') {
-            let (alias, value) = alias.split_once('=').unwrap_or((alias, ""));
+            let (alias, value) = if alias.is_char_boundary(1) {
+                alias.split_at(1)
+            } else {
+                (alias, "")
+            };
 
             if !OptionalArg::is_valid_alias(alias) {
                 return Err(InvalidAlias {

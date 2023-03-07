@@ -167,6 +167,10 @@ impl ArgParser {
             parsed_args.push(Positional {
                 value: arg.to_string(),
             });
+
+            if matches!(self.mode, ArgParserMode::OptionsFirst) {
+                parse_options = false;
+            }
         }
 
         Ok(parsed_args)
@@ -283,6 +287,33 @@ fn test_parse() -> Result<(), ArgParserError> {
             }
         ]),
         parser.parse(&["--bar=true", "--bar=false", "--bar", "false"])
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_parse_options_first() -> Result<(), ArgParserError> {
+    use ParsedArg::*;
+
+    let mut parser = ArgParser::new(ArgParserMode::OptionsFirst);
+
+    parser.add_option("foo", OptionalArg::new(OptionalArgKind::Flag, false), None)?;
+
+    assert_eq!(
+        Ok(vec![
+            Flag {
+                name: "foo",
+                value: true
+            },
+            Positional {
+                value: "foo".to_string()
+            },
+            Positional {
+                value: "--foo".to_string()
+            }
+        ]),
+        parser.parse(&["--foo", "foo", "--foo"])
     );
 
     Ok(())

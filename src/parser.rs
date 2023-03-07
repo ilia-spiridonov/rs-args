@@ -12,6 +12,7 @@ pub struct ArgParser {
     pub(crate) options: HashMap<&'static str, OptionalArg>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ParsedArg {
     Positional { value: String },
     Flag { name: String, value: bool },
@@ -108,14 +109,46 @@ fn test_add_option() {
 }
 
 impl ArgParser {
-    pub fn parse_args() -> ArgParseResult {
+    pub fn parse_args(&self) -> ArgParseResult {
         let args = env::args().skip(1).collect::<Vec<_>>();
         let str_args = args.iter().map(|s| &s[..]).collect::<Vec<_>>();
 
-        Self::parse(&str_args)
+        self.parse(&str_args)
     }
 
-    pub fn parse(args: &[&str]) -> ArgParseResult {
-        Ok(vec![])
+    pub fn parse(&self, args: &[&str]) -> ArgParseResult {
+        use ParsedArg::*;
+
+        let mut parsed_args = vec![];
+
+        for arg in args {
+            parsed_args.push(Positional {
+                value: arg.to_string(),
+            });
+        }
+
+        Ok(parsed_args)
     }
+}
+
+#[test]
+fn test_parse() -> Result<(), ArgParserError> {
+    use ParsedArg::*;
+
+    let mut parser = ArgParser::default();
+    parser.add_option("foo", OptionalArg::new(OptionalArgKind::Flag, false), None)?;
+
+    assert_eq!(
+        Ok(vec![
+            Positional {
+                value: "foo".to_string()
+            },
+            Positional {
+                value: "bar".to_string()
+            }
+        ]),
+        parser.parse(&["foo", "bar"])
+    );
+
+    Ok(())
 }

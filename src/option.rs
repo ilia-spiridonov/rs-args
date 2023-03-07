@@ -7,7 +7,7 @@ impl OptionalArg {
 }
 
 impl OptionalArg {
-    pub(crate) fn is_valid(name: &'static str) -> bool {
+    pub(crate) fn is_valid(name: &str) -> bool {
         let mut allow_hyphen = false;
 
         for (idx, ch) in name.chars().enumerate() {
@@ -35,7 +35,7 @@ fn test_is_valid() {
 }
 
 impl OptionalArg {
-    pub(crate) fn is_valid_alias(alias: &'static str) -> bool {
+    pub(crate) fn is_valid_alias(alias: &str) -> bool {
         Self::is_valid(alias) && alias.len() == 1
     }
 }

@@ -15,14 +15,14 @@ pub struct ArgParser {
 #[derive(Debug, PartialEq)]
 pub enum ParsedArg {
     Positional { value: String },
-    Flag { name: String, value: bool },
+    Flag { name: &'static str, value: bool },
     RequiredValue { name: String, value: String },
     OptionalValue { name: String, value: Option<String> },
 }
 
 #[derive(Debug, PartialEq)]
 pub enum ArgParserError {
-    InvalidOption { name: &'static str },
+    InvalidOption { name: String },
     DuplicateOption { name: &'static str },
     InvalidAlias { alias: &'static str },
     DuplicateAlias { alias: &'static str },
@@ -57,7 +57,9 @@ impl ArgParser {
         use ArgParserError::*;
 
         if !OptionalArg::is_valid(name) {
-            return Err(InvalidOption { name });
+            return Err(InvalidOption {
+                name: name.to_string(),
+            });
         }
 
         if self.options.contains_key(name) {
@@ -90,7 +92,9 @@ fn test_add_option() {
     let get_opt_arg = || OptionalArg::new(OptionalArgKind::Flag, false);
 
     assert_eq!(
-        Err(InvalidOption { name: "--foo" }),
+        Err(InvalidOption {
+            name: "--foo".to_string()
+        }),
         parser.add_option("--foo", get_opt_arg(), None)
     );
     assert_eq!(
@@ -122,6 +126,14 @@ impl ArgParser {
         let mut parsed_args = vec![];
 
         for arg in args {
+            if let Some((name_or_alias, value)) = self.parse_option(arg)? {
+                let (name, option) = self.resolve(name_or_alias)?;
+
+                parsed_args.push(Flag { name, value: true });
+
+                continue;
+            }
+
             parsed_args.push(Positional {
                 value: arg.to_string(),
             });
@@ -129,10 +141,38 @@ impl ArgParser {
 
         Ok(parsed_args)
     }
+
+    fn parse_option<'a>(&self, arg: &'a str) -> Result<Option<(&'a str, &'a str)>, ArgParserError> {
+        use ArgParserError::*;
+
+        if let Some(name) = arg.strip_prefix("--") {
+            if !OptionalArg::is_valid(name) {
+                return Err(InvalidOption {
+                    name: name.to_string(),
+                });
+            }
+
+            return Ok(Some((name, "")));
+        }
+
+        Ok(None)
+    }
+
+    fn resolve(
+        &self,
+        name_or_alias: &str,
+    ) -> Result<(&&'static str, &OptionalArg), ArgParserError> {
+        self.options
+            .get_key_value(name_or_alias)
+            .ok_or(ArgParserError::UnknownOption {
+                name: name_or_alias.to_string(),
+            })
+    }
 }
 
 #[test]
 fn test_parse() -> Result<(), ArgParserError> {
+    use ArgParserError::*;
     use ParsedArg::*;
 
     let mut parser = ArgParser::default();
@@ -148,6 +188,25 @@ fn test_parse() -> Result<(), ArgParserError> {
             }
         ]),
         parser.parse(&["foo", "bar"])
+    );
+    assert_eq!(
+        Err(InvalidOption {
+            name: "-foo".to_string()
+        }),
+        parser.parse(&["---foo"])
+    );
+    assert_eq!(
+        Err(UnknownOption {
+            name: "Foo".to_string()
+        }),
+        parser.parse(&["--Foo"])
+    );
+    assert_eq!(
+        Ok(vec![Flag {
+            name: "foo",
+            value: true
+        }]),
+        parser.parse(&["--foo"])
     );
 
     Ok(())

@@ -1,5 +1,8 @@
 use super::{OptionalArg, OptionalArgKind};
-use std::{collections::HashMap, env};
+use std::{
+    collections::{HashMap, VecDeque},
+    env,
+};
 
 pub enum ArgParserMode {
     Mixed,
@@ -14,10 +17,21 @@ pub struct ArgParser {
 
 #[derive(Debug, PartialEq)]
 pub enum ParsedArg {
-    Positional { value: String },
-    Flag { name: &'static str, value: bool },
-    RequiredValue { name: String, value: String },
-    OptionalValue { name: String, value: Option<String> },
+    Positional {
+        value: String,
+    },
+    Flag {
+        name: &'static str,
+        value: bool,
+    },
+    RequiredValue {
+        name: &'static str,
+        value: String,
+    },
+    OptionalValue {
+        name: &'static str,
+        value: Option<String>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,7 +42,8 @@ pub enum ArgParserError {
     DuplicateAlias { alias: &'static str },
     UnknownOption { name: String },
     UnknownAlias { alias: String },
-    InvalidValue { value: String },
+    InvalidOptionValue { name: &'static str, value: String },
+    MissingOptionValue { name: &'static str },
 }
 
 type ArgParseResult = Result<Vec<ParsedArg>, ArgParserError>;
@@ -130,11 +145,12 @@ impl ArgParser {
         use ArgParserError::*;
         use ParsedArg::*;
 
+        let mut args = VecDeque::from_iter(args);
         let mut parse_options = true;
         let mut parsed_options = HashMap::new();
         let mut parsed_args = vec![];
 
-        for arg in args {
+        while let Some(arg) = args.pop_front() {
             if *arg == "--" && parse_options {
                 parse_options = false;
                 continue;
@@ -146,7 +162,8 @@ impl ArgParser {
 
                     if matches!(option.kind, OptionalArgKind::Flag) {
                         if !matches!(value, "" | "true" | "false") {
-                            return Err(InvalidValue {
+                            return Err(InvalidOptionValue {
+                                name,
                                 value: value.to_string(),
                             });
                         }
@@ -154,6 +171,19 @@ impl ArgParser {
                         parsed_args.push(Flag {
                             name,
                             value: matches!(value, "" | "true"),
+                        });
+                    }
+
+                    if matches!(option.kind, OptionalArgKind::RequiredValue) {
+                        let value = if value.is_empty() {
+                            args.pop_front().ok_or(MissingOptionValue { name })?
+                        } else {
+                            value
+                        };
+
+                        parsed_args.push(RequiredValue {
+                            name,
+                            value: value.to_string(),
                         });
                     }
 
@@ -244,6 +274,11 @@ fn test_parse() -> Result<(), ArgParserError> {
         OptionalArg::new(OptionalArgKind::Flag, true),
         Some("b"),
     )?;
+    parser.add_option(
+        "baz",
+        OptionalArg::new(OptionalArgKind::RequiredValue, true),
+        Some("B"),
+    )?;
 
     assert_eq!(
         Ok(vec![
@@ -288,7 +323,8 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--foo", "--", "--", "--foo"])
     );
     assert_eq!(
-        Err(InvalidValue {
+        Err(InvalidOptionValue {
+            name: "bar",
             value: "no".to_string()
         }),
         parser.parse(&["--bar=no"])
@@ -318,6 +354,23 @@ fn test_parse() -> Result<(), ArgParserError> {
             }
         ]),
         parser.parse(&["--bar=true", "-b=false", "-b", "false"])
+    );
+    assert_eq!(
+        Err(MissingOptionValue { name: "baz" }),
+        parser.parse(&["--baz"]),
+    );
+    assert_eq!(
+        Ok(vec![
+            RequiredValue {
+                name: "baz",
+                value: "123".to_string()
+            },
+            RequiredValue {
+                name: "baz",
+                value: "-C".to_string()
+            }
+        ]),
+        parser.parse(&["--baz=123", "-B", "-C"])
     );
 
     Ok(())

@@ -23,10 +23,11 @@ pub enum ParsedArg {
 #[derive(Debug, PartialEq)]
 pub enum ArgParserError {
     InvalidOption { name: String },
+    InvalidAlias { alias: String },
     DuplicateOption { name: &'static str },
-    InvalidAlias { alias: &'static str },
     DuplicateAlias { alias: &'static str },
     UnknownOption { name: String },
+    UnknownAlias { alias: String },
     InvalidValue { value: String },
 }
 
@@ -69,7 +70,9 @@ impl ArgParser {
 
         if let Some(alias) = alias {
             if !OptionalArg::is_valid_alias(alias) {
-                return Err(InvalidAlias { alias });
+                return Err(InvalidAlias {
+                    alias: alias.to_string(),
+                });
             }
 
             if self.aliases.contains_key(alias) {
@@ -99,7 +102,9 @@ fn test_add_option() {
         parser.add_option("--foo", get_opt_arg(), None)
     );
     assert_eq!(
-        Err(InvalidAlias { alias: "?" }),
+        Err(InvalidAlias {
+            alias: "?".to_string()
+        }),
         parser.add_option("foo", get_opt_arg(), Some("?"))
     );
     assert_eq!(Ok(()), parser.add_option("foo", get_opt_arg(), Some("f")));
@@ -191,6 +196,18 @@ impl ArgParser {
             return Ok(Some((name, value)));
         }
 
+        if let Some(alias) = arg.strip_prefix('-') {
+            let (alias, value) = alias.split_once('=').unwrap_or((alias, ""));
+
+            if !OptionalArg::is_valid_alias(alias) {
+                return Err(InvalidAlias {
+                    alias: alias.to_string(),
+                });
+            }
+
+            return Ok(Some((alias, value)));
+        }
+
         Ok(None)
     }
 
@@ -198,9 +215,17 @@ impl ArgParser {
         &self,
         name_or_alias: &str,
     ) -> Result<(&&'static str, &OptionalArg), ArgParserError> {
+        use ArgParserError::*;
+
+        if OptionalArg::is_valid_alias(name_or_alias) {
+            return self.resolve(self.aliases.get(name_or_alias).ok_or(UnknownAlias {
+                alias: name_or_alias.to_string(),
+            })?);
+        }
+
         self.options
             .get_key_value(name_or_alias)
-            .ok_or(ArgParserError::UnknownOption {
+            .ok_or(UnknownOption {
                 name: name_or_alias.to_string(),
             })
     }
@@ -217,7 +242,7 @@ fn test_parse() -> Result<(), ArgParserError> {
     parser.add_option(
         "bar",
         OptionalArg::new(OptionalArgKind::Flag, true),
-        Some("f"),
+        Some("b"),
     )?;
 
     assert_eq!(
@@ -269,6 +294,12 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--bar=no"])
     );
     assert_eq!(
+        Err(UnknownAlias {
+            alias: "f".to_string()
+        }),
+        parser.parse(&["-f"])
+    );
+    assert_eq!(
         Ok(vec![
             Flag {
                 name: "bar",
@@ -286,7 +317,7 @@ fn test_parse() -> Result<(), ArgParserError> {
                 value: "false".to_string()
             }
         ]),
-        parser.parse(&["--bar=true", "--bar=false", "--bar", "false"])
+        parser.parse(&["--bar=true", "-b=false", "-b", "false"])
     );
 
     Ok(())

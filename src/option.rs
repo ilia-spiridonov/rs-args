@@ -8,6 +8,14 @@ impl OptionalArg {
 
 impl OptionalArg {
     pub(crate) fn is_valid(name: &str) -> bool {
+        Self::is_valid_hyphen_seq(name) && name.len() > 1
+    }
+
+    pub(crate) fn is_valid_alias(alias: &str) -> bool {
+        Self::is_valid_hyphen_seq(alias) && alias.len() == 1
+    }
+
+    fn is_valid_hyphen_seq(name: &str) -> bool {
         let mut allow_hyphen = false;
 
         for (idx, ch) in name.chars().enumerate() {
@@ -18,7 +26,7 @@ impl OptionalArg {
             };
         }
 
-        !name.is_empty()
+        true
     }
 }
 
@@ -27,17 +35,12 @@ fn test_is_valid() {
     assert!(!OptionalArg::is_valid(""));
     assert!(!OptionalArg::is_valid("💩"));
     assert!(!OptionalArg::is_valid("-"));
-    assert!(OptionalArg::is_valid("a"));
+    assert!(!OptionalArg::is_valid("a"));
+    assert!(OptionalArg::is_valid("aa"));
     assert!(!OptionalArg::is_valid("-a"));
     assert!(!OptionalArg::is_valid("a-"));
     assert!(!OptionalArg::is_valid("a--a"));
     assert!(OptionalArg::is_valid("a-A-0"));
-}
-
-impl OptionalArg {
-    pub(crate) fn is_valid_alias(alias: &str) -> bool {
-        Self::is_valid(alias) && alias.len() == 1
-    }
 }
 
 #[test]

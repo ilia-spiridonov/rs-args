@@ -1,7 +1,7 @@
 use super::{OptionalArg, OptionalArgKind};
 use std::{
     collections::{HashMap, VecDeque},
-    env,
+    env, fmt,
 };
 
 pub enum ArgParserMode {
@@ -47,6 +47,25 @@ pub enum ArgParserError {
 }
 
 type ArgParseResult = Result<Vec<ParsedArg>, ArgParserError>;
+
+impl fmt::Display for ArgParserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ArgParserError::*;
+
+        match self {
+            InvalidOption { name } => write!(f, "--{} is invalid", name),
+            InvalidAlias { alias } => write!(f, "-{} is invalid", alias),
+            DuplicateOption { name } => write!(f, "cannot provide --{} again", name),
+            DuplicateAlias { alias } => write!(f, "cannot provide -{} again", alias),
+            UnknownOption { name } => write!(f, "--{} is undefined", name),
+            UnknownAlias { alias } => write!(f, "-{} is undefined", alias),
+            InvalidOptionValue { name, value } => {
+                write!(f, "--{} cannot accept '{}' as a value", name, value)
+            }
+            MissingOptionValue { name } => write!(f, "--{} is missing a value", name),
+        }
+    }
+}
 
 impl ArgParser {
     pub fn new(mode: ArgParserMode) -> Self {

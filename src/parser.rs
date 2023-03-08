@@ -163,7 +163,9 @@ impl ArgParser {
                     let value = if OptionalArg::is_valid_alias(name_or_alias) {
                         if let Some(value) = value.strip_prefix('=') {
                             value
-                        } else if !value.is_empty() && matches!(option.kind, OptionalArgKind::Flag)
+                        } else if matches!(option.kind, OptionalArgKind::Flag)
+                            && !value.is_empty()
+                            && !value.starts_with('-')
                         {
                             args.push_front(format!("-{}", value));
 
@@ -434,6 +436,13 @@ fn test_parse() -> Result<(), ArgParserError> {
             alias: "t".to_string()
         }),
         parser.parse(&["-btrue"])
+    );
+    assert_eq!(
+        Err(InvalidOptionValue {
+            name: "bar",
+            value: "-foo".to_string()
+        }),
+        parser.parse(&["-b-foo"])
     );
     assert_eq!(
         Ok(vec![

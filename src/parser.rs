@@ -43,7 +43,9 @@ pub enum ArgParserError {
     UnknownOption { name: String },
     UnknownAlias { alias: String },
     InvalidOptionValue { name: &'static str, value: String },
+    InvalidAliasValue { alias: &'static str, value: String },
     MissingOptionValue { name: &'static str },
+    MissingAliasValue { alias: &'static str },
 }
 
 type ArgParseResult = Result<Vec<ParsedArg>, ArgParserError>;
@@ -62,7 +64,11 @@ impl fmt::Display for ArgParserError {
             InvalidOptionValue { name, value } => {
                 write!(f, "--{} cannot accept '{}' as a value", name, value)
             }
+            InvalidAliasValue { alias, value } => {
+                write!(f, "-{} cannot accept '{}' as a value", alias, value)
+            }
             MissingOptionValue { name } => write!(f, "--{} is missing a value", name),
+            MissingAliasValue { alias } => write!(f, "-{} is missing a value", alias),
         }
     }
 }
@@ -199,9 +205,16 @@ impl ArgParser {
                     match option.kind {
                         OptionalArgKind::Flag => {
                             if !matches!(value, "" | "true" | "false") {
-                                return Err(InvalidOptionValue {
-                                    name,
-                                    value: value.to_string(),
+                                return Err(if let Some(alias) = alias {
+                                    InvalidAliasValue {
+                                        alias,
+                                        value: value.to_string(),
+                                    }
+                                } else {
+                                    InvalidOptionValue {
+                                        name,
+                                        value: value.to_string(),
+                                    }
                                 });
                             }
 
@@ -212,13 +225,19 @@ impl ArgParser {
                         }
                         OptionalArgKind::RequiredValue => {
                             let value = if value.is_empty() {
-                                let value = args.pop_front().ok_or(MissingOptionValue { name })?;
-
-                                if let Ok(Some(_)) = self.parse_option(&value) {
-                                    return Err(MissingOptionValue { name });
-                                }
-
-                                value
+                                args.pop_front()
+                                    .and_then(|s| {
+                                        if let Ok(Some(_)) = self.parse_option(&s) {
+                                            None
+                                        } else {
+                                            Some(s)
+                                        }
+                                    })
+                                    .ok_or(if let Some(alias) = alias {
+                                        MissingAliasValue { alias }
+                                    } else {
+                                        MissingOptionValue { name }
+                                    })?
                             } else {
                                 value.to_string()
                             };
@@ -391,6 +410,13 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--bar=no"])
     );
     assert_eq!(
+        Err(InvalidAliasValue {
+            alias: "b",
+            value: "no".to_string()
+        }),
+        parser.parse(&["-b=no"])
+    );
+    assert_eq!(
         Err(UnknownAlias {
             alias: "a".to_string()
         }),
@@ -425,8 +451,8 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--baz"]),
     );
     assert_eq!(
-        Err(MissingOptionValue { name: "baz" }),
-        parser.parse(&["--baz", "--foo"])
+        Err(MissingAliasValue { alias: "B" }),
+        parser.parse(&["-B", "--foo"])
     );
     assert_eq!(
         Ok(vec![
@@ -464,8 +490,8 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["-btrue"])
     );
     assert_eq!(
-        Err(InvalidOptionValue {
-            name: "bar",
+        Err(InvalidAliasValue {
+            alias: "b",
             value: "-foo".to_string()
         }),
         parser.parse(&["-b-foo"])

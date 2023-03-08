@@ -191,7 +191,13 @@ impl ArgParser {
                         }
                         OptionalArgKind::RequiredValue => {
                             let value = if value.is_empty() {
-                                args.pop_front().ok_or(MissingOptionValue { name })?
+                                let value = args.pop_front().ok_or(MissingOptionValue { name })?;
+
+                                if let Ok(Some(_)) = self.parse_option(&value) {
+                                    return Err(MissingOptionValue { name });
+                                }
+
+                                value
                             } else {
                                 value.to_string()
                             };
@@ -391,6 +397,10 @@ fn test_parse() -> Result<(), ArgParserError> {
         parser.parse(&["--baz"]),
     );
     assert_eq!(
+        Err(MissingOptionValue { name: "baz" }),
+        parser.parse(&["--baz", "--foo"])
+    );
+    assert_eq!(
         Ok(vec![
             RequiredValue {
                 name: "baz",
@@ -398,10 +408,10 @@ fn test_parse() -> Result<(), ArgParserError> {
             },
             RequiredValue {
                 name: "baz",
-                value: "-C".to_string()
+                value: "456".to_string()
             }
         ]),
-        parser.parse(&["--baz=123", "-B", "-C"])
+        parser.parse(&["--baz=123", "-B", "456"])
     );
     assert_eq!(
         Ok(vec![

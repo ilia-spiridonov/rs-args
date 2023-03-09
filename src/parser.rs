@@ -48,8 +48,6 @@ pub enum ArgParserError {
     MissingAliasValue { alias: &'static str },
 }
 
-type ArgParseResult = Result<Vec<ParsedArg>, ArgParserError>;
-
 impl fmt::Display for ArgParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ArgParserError::*;
@@ -159,14 +157,14 @@ fn test_add_option() {
 }
 
 impl ArgParser {
-    pub fn parse_args(&self) -> ArgParseResult {
+    pub fn parse_args(&self) -> Result<Vec<ParsedArg>, ArgParserError> {
         let args = env::args().skip(1).collect::<Vec<_>>();
         let str_args = args.iter().map(|s| &s[..]).collect::<Vec<_>>();
 
         self.parse(&str_args)
     }
 
-    pub fn parse(&self, args: &[&str]) -> ArgParseResult {
+    pub fn parse(&self, args: &[&str]) -> Result<Vec<ParsedArg>, ArgParserError> {
         use ArgParserError::*;
         use ParsedArg::*;
 

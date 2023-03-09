@@ -4,7 +4,7 @@ Reasonable process arguments parsing
 ## Usage
 General example:
 ```rust
-use rs_args::{ArgParser, ArgParserMode, OptionalArg, OptionalArgKind, ParsedArg};
+use rs_args::{ArgParser, ArgParserMode, ArgSelector, OptionalArg, OptionalArgKind};
 use std::process;
 
 fn main() {
@@ -33,35 +33,24 @@ fn main() {
 }
 ```
 
-Extracting all positional arguments from parser output:
+Since `args` is just a vector of `ParsedArg`, you may want to use `ArgSelector` to easily query its contents:
 ```rust
-let pos_args = args
-    .iter()
-    .filter_map(|arg| if let ParsedArg::Positional { value } = arg { Some(value) } else { None })
-    .collect::<Vec<_>>();
+let sel = ArgSelector::new(&args);
+let pos_args = sel.get_positional();
 
 println!("positional arguments: {:?}", pos_args);
 ```
 
-Extracting a flag:
+Another example, extracting a flag:
 ```rust
-let interactive = args
-    .iter()
-    .find_map(|arg| {
-        if let ParsedArg::Flag { name: "interactive", value } = arg {
-            Some(*value)
-        } else {
-            None
-        }
-    })
-    .unwrap_or(false);
+let interactive = sel.get_flag("interactive", false);
 
 println!("interactive? {}", interactive);
 ```
 
 ## Notes
 * `ArgParser` only handles `String` (and `&str`) and cannot accept `OsString` (and `&OsStr`); consequently, a subset of all valid process arguments lists now cannot be parsed by `rs-args`, although in practice that's not a significant limitation; the convenience of processing well-formed UTF-8 prevails.
-* Parser output is a simple `Vec`, not a map of any kind; however, Rust's iterators are so powerful that turning it into anything that makes more sense for your use case shouldn't be an issue.
+* Parser output is a simple `Vec`, not a map of any kind; however, Rust's iterators are so powerful that turning it into anything that makes more sense for your use case shouldn't be an issue (assuming `ArgSelector` doesn't work for you).
 * Positional and optional arguments can come in any order, that's what's called the 'mixed' parsing mode and it's the `default()`; to enforce the 'options-first' mode (e.g. for parsing subcommands) pass `ArgParserMode::OptionsFirst` to `ArgParser::new`.
 
 ## Features
@@ -69,4 +58,4 @@ println!("interactive? {}", interactive);
 * Pass `--` to treat everything that follows literally: `foo -- --foo` yields `--foo` as a positional argument, and `-- --` yields a single positional argument `--` (which makes sense, right?).
 * Flags can be reset by passing `false` as an explicit value, e.g. `--foo=false`. For symmetry, `true` can also be passed the same way but that's completely redundant. No other values are permitted in the interest of trying to avoid things like the infamous YAML's Norway problem.
 * There's a safety check that'll prevent a value from being implicitly consumed if it looks like an option, e.g. `--foo --bar` will fail if `foo` actually requires a value, but the explicit notation `--foo=--bar` will work.
-* It's possible to use `=` with aliases too, e.g. `-f=bar`, but unnecessary unless `f` is a flag, `-fbar` works. Things like `-fbar=baz` are also permitted, but in this case `=` won't be stripped since it's not a prefix.
+* It's possible to use `=` with aliases too, e.g. `-f=bar`, but unnecessary unless `f` is a flag, as `-fbar` works. Things like `-fbar=baz` are also permitted, but in this case `=` won't be stripped since it's not a prefix.

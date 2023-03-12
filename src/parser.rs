@@ -133,28 +133,30 @@ fn test_add_option() {
     use ArgParserError::*;
 
     let mut parser = ArgParser::default();
-    let get_opt_arg = || OptionalArg::new(OptionalArgKind::Flag, false);
 
     assert_eq!(
         Err(InvalidOption {
             name: "--foo".to_string()
         }),
-        parser.add_option("--foo", get_opt_arg(), None)
+        parser.add_option("--foo", OptionalArg::flag(), None)
     );
     assert_eq!(
         Err(InvalidAlias {
             alias: "?".to_string()
         }),
-        parser.add_option("foo", get_opt_arg(), Some("?"))
+        parser.add_option("foo", OptionalArg::flag(), Some("?"))
     );
-    assert_eq!(Ok(()), parser.add_option("foo", get_opt_arg(), Some("f")));
+    assert_eq!(
+        Ok(()),
+        parser.add_option("foo", OptionalArg::flag(), Some("f"))
+    );
     assert_eq!(
         Err(DuplicateOption { name: "foo" }),
-        parser.add_option("foo", get_opt_arg(), None)
+        parser.add_option("foo", OptionalArg::flag(), None)
     );
     assert_eq!(
         Err(DuplicateAlias { alias: "f" }),
-        parser.add_option("bar", get_opt_arg(), Some("f"))
+        parser.add_option("bar", OptionalArg::flag(), Some("f"))
     );
 }
 
@@ -351,14 +353,10 @@ fn test_parse() -> Result<(), ArgParserError> {
 
     let mut parser = ArgParser::default();
 
-    {
-        use OptionalArgKind::*;
-
-        parser.add_option("foo", OptionalArg::new(Flag, false), Some("f"))?;
-        parser.add_option("bar", OptionalArg::new(Flag, true), Some("b"))?;
-        parser.add_option("baz", OptionalArg::new(RequiredValue, true), Some("B"))?;
-        parser.add_option("qux", OptionalArg::new(OptionalValue, true), Some("q"))?;
-    }
+    parser.add_option("foo", OptionalArg::flag(), Some("f"))?;
+    parser.add_option("bar", OptionalArg::flag().multiple(), Some("b"))?;
+    parser.add_option("baz", OptionalArg::required_value().multiple(), Some("B"))?;
+    parser.add_option("qux", OptionalArg::optional_value().multiple(), Some("q"))?;
 
     assert_eq!(
         Ok(vec![
@@ -527,7 +525,7 @@ fn test_parse_options_first() -> Result<(), ArgParserError> {
 
     let mut parser = ArgParser::new(ArgParserMode::OptionsFirst);
 
-    parser.add_option("foo", OptionalArg::new(OptionalArgKind::Flag, false), None)?;
+    parser.add_option("foo", OptionalArg::flag(), None)?;
 
     assert_eq!(
         Ok(vec![

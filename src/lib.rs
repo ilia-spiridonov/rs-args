@@ -5,7 +5,7 @@ mod option;
 mod parser;
 mod selector;
 
-pub enum OptionalArgKind {
+pub(crate) enum OptionalArgKind {
     Flag,
     RequiredValue,
     OptionalValue,

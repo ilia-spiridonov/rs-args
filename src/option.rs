@@ -1,8 +1,30 @@
 use super::{OptionalArg, OptionalArgKind};
 
 impl OptionalArg {
-    pub fn new(kind: OptionalArgKind, multiple: bool) -> Self {
-        Self { kind, multiple }
+    pub fn flag() -> Self {
+        Self {
+            kind: OptionalArgKind::Flag,
+            multiple: false,
+        }
+    }
+
+    pub fn required_value() -> Self {
+        Self {
+            kind: OptionalArgKind::RequiredValue,
+            multiple: false,
+        }
+    }
+
+    pub fn optional_value() -> Self {
+        Self {
+            kind: OptionalArgKind::OptionalValue,
+            multiple: false,
+        }
+    }
+
+    pub fn multiple(mut self) -> Self {
+        self.multiple = true;
+        self
     }
 }
 

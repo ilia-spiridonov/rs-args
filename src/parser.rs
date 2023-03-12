@@ -1,7 +1,7 @@
 use super::{OptionalArg, OptionalArgKind};
 use std::{
     collections::{HashMap, VecDeque},
-    env, fmt,
+    env, error, fmt,
 };
 
 pub enum ArgParserMode {
@@ -70,6 +70,8 @@ impl fmt::Display for ArgParserError {
         }
     }
 }
+
+impl error::Error for ArgParserError {}
 
 impl ArgParser {
     pub fn new(mode: ArgParserMode) -> Self {

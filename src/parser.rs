@@ -4,11 +4,13 @@ use std::{
     env, error, fmt,
 };
 
+#[derive(Debug, PartialEq)]
 pub enum ArgParserMode {
     Mixed,
     OptionsFirst,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ArgParser {
     pub(crate) mode: ArgParserMode,
     pub(crate) aliases: HashMap<&'static str, &'static str>,
@@ -90,7 +92,7 @@ impl Default for ArgParser {
 }
 
 impl ArgParser {
-    pub fn add_option(&mut self, option: OptionalArg) -> Result<(), ArgParserError> {
+    pub fn add_option(&mut self, option: OptionalArg) -> Result<&mut Self, ArgParserError> {
         use ArgParserError::*;
 
         let OptionalArg { name, alias, .. } = option;
@@ -121,7 +123,7 @@ impl ArgParser {
 
         self.options.insert(name, option);
 
-        Ok(())
+        Ok(self)
     }
 }
 
@@ -143,10 +145,9 @@ fn test_add_option() {
         }),
         parser.add_option(OptionalArg::flag("foo").alias("?"))
     );
-    assert_eq!(
-        Ok(()),
-        parser.add_option(OptionalArg::flag("foo").alias("f"))
-    );
+    assert!(parser
+        .add_option(OptionalArg::flag("foo").alias("f"))
+        .is_ok());
     assert_eq!(
         Err(DuplicateOption { name: "foo" }),
         parser.add_option(OptionalArg::flag("foo"))
@@ -350,10 +351,11 @@ fn test_parse() -> Result<(), ArgParserError> {
 
     let mut parser = ArgParser::default();
 
-    parser.add_option(OptionalArg::flag("foo").alias("f"))?;
-    parser.add_option(OptionalArg::flag("bar").multiple().alias("b"))?;
-    parser.add_option(OptionalArg::required_value("baz").multiple().alias("B"))?;
-    parser.add_option(OptionalArg::optional_value("qux").multiple().alias("q"))?;
+    parser
+        .add_option(OptionalArg::flag("foo").alias("f"))?
+        .add_option(OptionalArg::flag("bar").multiple().alias("b"))?
+        .add_option(OptionalArg::required_value("baz").multiple().alias("B"))?
+        .add_option(OptionalArg::optional_value("qux").multiple().alias("q"))?;
 
     assert_eq!(
         Ok(vec![

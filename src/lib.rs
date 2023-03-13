@@ -5,15 +5,17 @@ mod option;
 mod parser;
 mod selector;
 
-pub(crate) enum OptionalArgKind {
+#[derive(Debug, PartialEq)]
+pub enum OptionalArgKind {
     Flag,
     RequiredValue,
     OptionalValue,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct OptionalArg {
-    pub(crate) name: &'static str,
-    pub(crate) alias: Option<&'static str>,
-    pub(crate) kind: OptionalArgKind,
-    pub(crate) multiple: bool,
+    pub name: &'static str,
+    pub alias: Option<&'static str>,
+    pub kind: OptionalArgKind,
+    pub multiple: bool,
 }

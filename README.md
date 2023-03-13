@@ -4,16 +4,17 @@ Reasonable process arguments parsing
 ## Usage
 General example:
 ```rust
-use rs_args::{ArgParser, ArgParserMode, ArgSelector, OptionalArg};
+use rs_args::{ArgParser, ArgParserError, ArgSelector, OptionalArg};
 use std::process;
 
-fn main() {
+fn main() -> Result<(), ArgParserError> {
     // Or ArgParser::new(ArgParserMode::OptionsFirst), see an explanation below
     let mut parser = ArgParser::default();
 
-    parser.add_option(OptionalArg::required_value("user")).unwrap();
-    parser.add_option(OptionalArg::flag("interactive").alias("i")).unwrap();
-    parser.add_option(OptionalArg::flag("verbose").multiple().alias("v")).unwrap();
+    parser
+        .add_option(OptionalArg::required_value("user"))?
+        .add_option(OptionalArg::flag("interactive").alias("i"))?
+        .add_option(OptionalArg::flag("verbose").multiple().alias("v"))?;
 
     // Or parser.parse_args() which will use std::env::args().skip(1)
     match parser.parse(&["--user", "foo", "-ivvv", "bar"]) {
@@ -26,6 +27,8 @@ fn main() {
             // args is Vec<ParsedArg>, see below
         }
     };
+
+    Ok(())
 }
 ```
 

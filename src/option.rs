@@ -1,30 +1,35 @@
 use super::{OptionalArg, OptionalArgKind};
 
 impl OptionalArg {
-    pub fn flag() -> Self {
-        Self {
-            kind: OptionalArgKind::Flag,
-            multiple: false,
-        }
+    pub fn flag(name: &'static str) -> Self {
+        Self::new(name, OptionalArgKind::Flag)
     }
 
-    pub fn required_value() -> Self {
-        Self {
-            kind: OptionalArgKind::RequiredValue,
-            multiple: false,
-        }
+    pub fn required_value(name: &'static str) -> Self {
+        Self::new(name, OptionalArgKind::RequiredValue)
     }
 
-    pub fn optional_value() -> Self {
-        Self {
-            kind: OptionalArgKind::OptionalValue,
-            multiple: false,
-        }
+    pub fn optional_value(name: &'static str) -> Self {
+        Self::new(name, OptionalArgKind::OptionalValue)
     }
 
     pub fn multiple(mut self) -> Self {
         self.multiple = true;
         self
+    }
+
+    pub fn alias(mut self, alias: &'static str) -> Self {
+        self.alias = Some(alias);
+        self
+    }
+
+    fn new(name: &'static str, kind: OptionalArgKind) -> Self {
+        Self {
+            name,
+            alias: None,
+            kind,
+            multiple: false,
+        }
     }
 }
 

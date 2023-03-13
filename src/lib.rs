@@ -12,6 +12,8 @@ pub(crate) enum OptionalArgKind {
 }
 
 pub struct OptionalArg {
+    pub(crate) name: &'static str,
+    pub(crate) alias: Option<&'static str>,
     pub(crate) kind: OptionalArgKind,
     pub(crate) multiple: bool,
 }

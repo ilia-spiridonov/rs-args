@@ -586,6 +586,7 @@ fn test_parse_options_first() -> Result<(), ArgParserError> {
     parser
         .add_positional(PositionalArg::named())?
         .add_positional(PositionalArg::named())?
+        .add_positional(PositionalArg::rest())?
         .add_option(OptionalArg::flag("foo"))?;
 
     assert_eq!(

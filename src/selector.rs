@@ -23,7 +23,7 @@ impl<'a> ArgSelector<'a> {
         self.args
             .iter()
             .find_map(|arg| match arg {
-                ParsedArg::Flag { name: _name, value } if name == *_name => Some(*value),
+                &ParsedArg::Flag { name: _name, value } if name == _name => Some(value),
                 _ => None,
             })
             .unwrap_or(default)
@@ -31,7 +31,10 @@ impl<'a> ArgSelector<'a> {
 
     pub fn get_value(&self, name: &str) -> Option<&'a String> {
         self.args.iter().find_map(|arg| match arg {
-            ParsedArg::RequiredValue { name: _name, value } if name == *_name => Some(value),
+            &ParsedArg::RequiredValue {
+                name: _name,
+                ref value,
+            } if name == _name => Some(value),
             _ => None,
         })
     }
@@ -40,7 +43,10 @@ impl<'a> ArgSelector<'a> {
         self.args
             .iter()
             .filter_map(|arg| match arg {
-                ParsedArg::RequiredValue { name: _name, value } if name == *_name => Some(value),
+                &ParsedArg::RequiredValue {
+                    name: _name,
+                    ref value,
+                } if name == _name => Some(value),
                 _ => None,
             })
             .collect()
@@ -50,7 +56,10 @@ impl<'a> ArgSelector<'a> {
         self.args
             .iter()
             .find_map(|arg| match arg {
-                ParsedArg::OptionalValue { name: _name, value } if name == *_name => value.as_ref(),
+                &ParsedArg::OptionalValue {
+                    name: _name,
+                    ref value,
+                } if name == _name => value.as_ref(),
                 _ => None,
             })
             .unwrap_or(default)

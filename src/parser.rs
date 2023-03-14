@@ -1,4 +1,4 @@
-use super::{OptionalArg, OptionalArgKind, PositionalArg};
+use super::{OptionalArg, OptionalArgKind, PositionalArg, PositionalArgKind};
 use std::{
     collections::{HashMap, VecDeque},
     env, error, fmt,
@@ -49,6 +49,7 @@ pub enum ArgParserError {
     InvalidAliasValue { alias: &'static str, value: String },
     MissingOptionValue { name: &'static str },
     MissingAliasValue { alias: &'static str },
+    InvalidRestArg,
 }
 
 impl fmt::Display for ArgParserError {
@@ -70,6 +71,7 @@ impl fmt::Display for ArgParserError {
             }
             MissingOptionValue { name } => write!(f, "--{} is missing a value", name),
             MissingAliasValue { alias } => write!(f, "-{} is missing a value", alias),
+            InvalidRestArg => write!(f, "'rest' positional arg must be placed last"),
         }
     }
 }
@@ -157,6 +159,38 @@ fn test_add_option() {
     assert_eq!(
         Err(DuplicateAlias { alias: "f" }),
         parser.add_option(OptionalArg::flag("bar").alias("f"))
+    );
+}
+
+impl ArgParser {
+    pub fn add_positional(&mut self, arg: PositionalArg) -> Result<&mut Self, ArgParserError> {
+        if self.positional.last()
+            == Some(&PositionalArg {
+                kind: PositionalArgKind::Rest,
+            })
+        {
+            return Err(ArgParserError::InvalidRestArg);
+        }
+
+        self.positional.push(arg);
+
+        Ok(self)
+    }
+}
+
+#[test]
+fn test_add_positional() {
+    let mut parser = ArgParser::default();
+
+    assert!(parser.add_positional(PositionalArg::named()).is_ok());
+    assert!(parser.add_positional(PositionalArg::rest()).is_ok());
+    assert_eq!(
+        Err(ArgParserError::InvalidRestArg),
+        parser.add_positional(PositionalArg::named())
+    );
+    assert_eq!(
+        Err(ArgParserError::InvalidRestArg),
+        parser.add_positional(PositionalArg::rest())
     );
 }
 

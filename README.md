@@ -4,7 +4,7 @@ Reasonable process arguments parsing
 ## Usage
 General example:
 ```rust
-use rs_args::{ArgParser, ArgParserError, ArgSelector, OptionalArg};
+use rs_args::{ArgParser, ArgParserError, ArgSelector, OptionalArg, PositionalArg};
 use std::process;
 
 fn main() -> Result<(), ArgParserError> {
@@ -12,6 +12,7 @@ fn main() -> Result<(), ArgParserError> {
     let mut parser = ArgParser::default();
 
     parser
+        .add_positional(PositionalArg::named())?
         .add_option(OptionalArg::required_value("user"))?
         .add_option(OptionalArg::flag("interactive").alias("i"))?
         .add_option(OptionalArg::flag("verbose").multiple().alias("v"))?;

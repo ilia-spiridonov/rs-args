@@ -50,6 +50,7 @@ pub enum ArgParserError {
     MissingOptionValue { name: &'static str },
     MissingAliasValue { alias: &'static str },
     InvalidRestArg,
+    MissingArgs { actual: usize, expected: usize },
 }
 
 impl fmt::Display for ArgParserError {
@@ -72,6 +73,9 @@ impl fmt::Display for ArgParserError {
             MissingOptionValue { name } => write!(f, "--{} is missing a value", name),
             MissingAliasValue { alias } => write!(f, "-{} is missing a value", alias),
             InvalidRestArg => write!(f, "'rest' positional arg must be placed last"),
+            MissingArgs { actual, expected } => {
+                write!(f, "{} arg(s) required, but got {}", expected, actual)
+            }
         }
     }
 }
@@ -316,6 +320,24 @@ impl ArgParser {
             }
         }
 
+        let parsed_positional = parsed_args
+            .iter()
+            .filter(|arg| matches!(arg, ParsedArg::Positional { value: _ }))
+            .count();
+
+        let min_expected_positional = self
+            .positional
+            .iter()
+            .filter(|arg| arg.kind == PositionalArgKind::Named)
+            .count();
+
+        if parsed_positional < min_expected_positional {
+            return Err(MissingArgs {
+                actual: parsed_positional,
+                expected: min_expected_positional,
+            });
+        }
+
         Ok(parsed_args)
     }
 
@@ -556,12 +578,23 @@ fn test_parse() -> Result<(), ArgParserError> {
 
 #[test]
 fn test_parse_options_first() -> Result<(), ArgParserError> {
+    use ArgParserError::*;
     use ParsedArg::*;
 
     let mut parser = ArgParser::new(ArgParserMode::OptionsFirst);
 
-    parser.add_option(OptionalArg::flag("foo"))?;
+    parser
+        .add_positional(PositionalArg::named())?
+        .add_positional(PositionalArg::named())?
+        .add_option(OptionalArg::flag("foo"))?;
 
+    assert_eq!(
+        Err(MissingArgs {
+            actual: 1,
+            expected: 2
+        }),
+        parser.parse(&["--foo", "foo"])
+    );
     assert_eq!(
         Ok(vec![
             Flag {

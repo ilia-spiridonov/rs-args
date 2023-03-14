@@ -1,4 +1,4 @@
-use super::{OptionalArg, OptionalArgKind};
+use super::{OptionalArg, OptionalArgKind, PositionalArg};
 use std::{
     collections::{HashMap, VecDeque},
     env, error, fmt,
@@ -15,6 +15,7 @@ pub struct ArgParser {
     pub(crate) mode: ArgParserMode,
     pub(crate) aliases: HashMap<&'static str, &'static str>,
     pub(crate) options: HashMap<&'static str, OptionalArg>,
+    pub(crate) positional: Vec<PositionalArg>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -81,6 +82,7 @@ impl ArgParser {
             mode,
             aliases: HashMap::new(),
             options: HashMap::new(),
+            positional: Vec::new(),
         }
     }
 }
@@ -324,14 +326,14 @@ impl ArgParser {
         use ArgParserError::*;
 
         let (name, alias) = if OptionalArg::is_valid_alias(name_or_alias) {
-            let (alias, name) = self
-                .aliases
-                .get_key_value(name_or_alias)
-                .ok_or(UnknownAlias {
-                    alias: name_or_alias.to_string(),
-                })?;
+            let (&alias, &name) =
+                self.aliases
+                    .get_key_value(name_or_alias)
+                    .ok_or(UnknownAlias {
+                        alias: name_or_alias.to_string(),
+                    })?;
 
-            (*name, Some(*alias))
+            (name, Some(alias))
         } else {
             (name_or_alias, None)
         };
